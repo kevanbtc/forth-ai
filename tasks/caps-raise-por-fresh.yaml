@@ -1,0 +1,17 @@
+id: "caps-raise-por-fresh-v1"
+goal: "Raise stablecoin caps to 500k uUSD only when PoR is fresh; add invariants + CI gates."
+inputs:
+  repo: "."
+  network: "ethereum-mainnet"
+  targetCaps:
+    mint: "500000e18"
+    burn: "500000e18"
+constraints:
+  - "PoR lastPrice != 0 and updatedAt within staleAfter"
+  - "No direct on-chain writes; emit Safe JSON only"
+  - "Coverage >= 90%; Slither: no HIGH/MED"
+  - "No storage layout diffs"
+deliverables:
+  - "PR: new invariant tests (PoR freshness, cap monotonicity), CI gates updated"
+  - "Safe JSON bundle for setCaps(uint256,uint256) guarded by Timelock"
+  - "REPORT.md: why safe, links to CI, gas/coverage deltas"

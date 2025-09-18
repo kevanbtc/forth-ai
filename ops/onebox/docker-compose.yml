@@ -1,0 +1,160 @@
+version: "3.8"
+services:
+  erigon:
+    image: thorax/erigon:stable
+    command: ["--chain=mainnet", "--http.addr=0.0.0.0", "--http", "--ws", "--private.api.addr=0.0.0.0:9090", "--snapshots=true"]
+    volumes: ["./data/erigon:/home/erigon/.local/share/erigon"]
+    ports: ["8545:8545", "8546:8546"]
+    restart: unless-stopped
+
+  lighthouse:
+    image: sigp/lighthouse:latest
+    command: ["bn", "--network=mainnet", "--execution-endpoint=http://erigon:8551", "--checkpoint-sync-url=https://mainnet-checkpoint.sigp.io", "--http", "--http-address=0.0.0.0"]
+    volumes: ["./data/lighthouse:/root/.lighthouse"]
+    depends_on: ["erigon"]
+    ports: ["5052:5052"]
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: blockscout
+      POSTGRES_USER: blockscout
+      POSTGRES_DB: blockscout
+    volumes: ["./data/postgres:/var/lib/postgresql/data"]
+    restart: unless-stopped
+
+  blockscout:
+    image: blockscout/blockscout:latest
+    environment:
+      DATABASE_URL: postgres://blockscout:blockscout@postgres:5432/blockscout
+      ETHEREUM_JSONRPC_HTTP_URL: http://erigon:8545
+      ETHEREUM_JSONRPC_TRACE_URL: http://erigon:8545
+      ETHEREUM_JSONRPC_WS_URL: ws://erigon:8546
+      COIN: ETH
+    depends_on: ["postgres","redis","erigon"]
+    ports: ["4000:4000"]
+    restart: unless-stopped
+
+  ipfs:
+    image: ipfs/kubo:latest
+    volumes: ["./data/ipfs:/data/ipfs"]
+    ports: ["5001:5001", "4001:4001", "8080:8080"]
+    restart: unless-stopped
+
+  ipfs-cluster:
+    image: ipfs/ipfs-cluster:latest
+    environment:
+      CLUSTER_SECRET: "replace-me"
+    volumes: ["./data/cluster:/data/ipfs-cluster"]
+    ports: ["9094:9094"]
+    depends_on: ["ipfs"]
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: changeme
+    volumes: ["./data/minio:/data"]
+    ports: ["9000:9000","9001:9001"]
+    restart: unless-stopped
+
+  vault:
+    image: hashicorp/vault:1.17
+    cap_add: ["IPC_LOCK"]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports: ["8200:8200"]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes: ["../../ops/monitor/prometheus.yml:/etc/prometheus/prometheus.yml", "../../ops/monitor/alerts:/etc/prometheus/alerts"]
+    ports: ["9090:9090"]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["3000:3000"]
+    volumes: ["./monitor/grafana:/var/lib/grafana"]
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.8
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes: ["./monitor/loki.yaml:/etc/loki/local-config.yaml", "./data/loki:/loki"]
+    ports: ["3100:3100"]
+    restart: unless-stopped
+
+  discord-bot:
+    build:
+      context: ../../discord
+      dockerfile: Dockerfile
+    env_file:
+      - ../../discord/.env
+    depends_on: ["erigon","blockscout"]
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"         # keep LAN-only; do not expose to public
+    volumes:
+      - ./data/ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports: ["6379:6379"]
+
+  agents-orchestrator:
+    build: ../../agents/orchestrator
+    env_file: ../../agents/.env
+    depends_on: [redis, ollama, agents-postgres]
+    restart: unless-stopped
+
+  agents-builder:
+    build: ../../agents/builder
+    env_file: ../../agents/.env
+    depends_on: [redis, ollama]
+    restart: unless-stopped
+
+  agents-solidity:
+    build: ../../agents/solidity
+    env_file: ../../agents/.env
+    volumes:
+      - ../../:/workspace
+    depends_on: [redis, ollama]
+    restart: unless-stopped
+
+  agents-devops:
+    build: ../../agents/devops
+    env_file: ../../agents/.env
+    depends_on: [redis, ollama]
+    restart: unless-stopped
+
+  agents-reviewer:
+    build: ../../agents/reviewer
+    env_file: ../../agents/.env
+    depends_on: [redis, ollama]
+    restart: unless-stopped
+
+  agents-postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: agents
+      POSTGRES_USER: agents
+      POSTGRES_DB: agents
+    volumes: ["./data/agents-pg:/var/lib/postgresql/data"]
+    restart: unless-stopped
