@@ -9,8 +9,7 @@ import http from "http";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
-import fs from "fs-extra";
+import { Interface, getAddress } from "ethers";
 
 const {
   DISCORD_TOKEN, OPENAI_API_KEY, OPENAI_MODEL,
@@ -22,7 +21,8 @@ const {
   FORTH_CMD = "gforth",
   FORTH_TIMEOUT_MS = "6000",
   OPS_INDEX = "../ops/index.json",
-  USE_OLLAMA = "0", OLLAMA_BASE = "http://ollama:11434", OLLAMA_MODEL = "unykorn-ops"
+  USE_OLLAMA = "0", OLLAMA_BASE = "http://ollama:11434", OLLAMA_MODEL = "unykorn-ops",
+  VAULT_NFT, COMPLIANCE
 } = process.env;
 
 invariant(DISCORD_TOKEN, "DISCORD_TOKEN required");
@@ -47,6 +47,19 @@ const openaiChat = OPENAI_API_KEY
       maxTokens: Number(MAX_TOKENS)
     })
   : null;
+
+const iVault = new Interface([
+  "function mint(address to,string cid,bytes32 docHash,uint256 notional)"
+]);
+const iComp = new Interface([
+  "function addRecord(uint256 vaultId,bytes32 payloadHash,bytes32 payloadCid,uint256 isoCode)"
+]);
+
+function hex32(x){ return x.startsWith("0x") ? x : "0x"+x; }
+
+async function safeJson(to, data){
+  return JSON.stringify({ to, value:"0", data, operation:0 }, null, 2);
+}
 
 // Metrics
 let chatCount = 0;
@@ -405,6 +418,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
         // Approve
         await interaction.editReply(`✅ Task ${id} approved.`);
       }
+      return;
+    }
+
+    if (interaction.commandName === "mint-vault") {
+      await interaction.deferReply({ ephemeral: true });
+      const to = getAddress(interaction.options.getString("to", true));
+      const cid = interaction.options.getString("cid", true);
+      const hash = hex32(interaction.options.getString("hash", true));
+      const notional = interaction.options.getString("notional", true);
+      const data = iVault.encodeFunctionData("mint", [to, cid, hash, notional]);
+      const payload = await safeJson(VAULT_NFT, data);
+      await interaction.editReply("```json\n" + payload + "\n```");
+      return;
+    }
+
+    if (interaction.commandName === "add-compliance") {
+      await interaction.deferReply({ ephemeral: true });
+      const id = interaction.options.getInteger("vaultid", true);
+      const cid = hex32(interaction.options.getString("cid", true));
+      const hash = hex32(interaction.options.getString("hash", true));
+      const iso = interaction.options.getInteger("iso", true);
+      const data = iComp.encodeFunctionData("addRecord", [id, hash, cid, iso]);
+      const payload = await safeJson(COMPLIANCE, data);
+      await interaction.editReply("```json\n" + payload + "\n```");
       return;
     }
   } catch (e) {

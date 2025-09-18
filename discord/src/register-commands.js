@@ -93,7 +93,21 @@ const commands = [
       sub.setName("approve")
         .setDescription("Approve task bundle")
         .addStringOption(o => o.setName("id").setDescription("Task ID").setRequired(true))
-    )
+    ),
+  new SlashCommandBuilder()
+    .setName("mint-vault")
+    .setDescription("Build Safe JSON to mint a VaultNFT")
+    .addStringOption(o => o.setName("to").setDescription("Recipient addr").setRequired(true))
+    .addStringOption(o => o.setName("cid").setDescription("IPFS CID for docs").setRequired(true))
+    .addStringOption(o => o.setName("hash").setDescription("sha256 hex").setRequired(true))
+    .addStringOption(o => o.setName("notional").setDescription("Amount in wei").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("add-compliance")
+    .setDescription("Build Safe JSON for ComplianceRegistry.addRecord")
+    .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
+    .addStringOption(o => o.setName("cid").setDescription("Travel-rule CID").setRequired(true))
+    .addStringOption(o => o.setName("hash").setDescription("sha256 hex").setRequired(true))
+    .addIntegerOption(o => o.setName("iso").setDescription("ISO code (e.g., 840)").setRequired(true))
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
