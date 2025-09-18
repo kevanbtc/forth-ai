@@ -7,7 +7,9 @@ contract PorManagerTest is Test {
   PorManager por;
 
   function setUp() public {
+    vm.warp(100);
     por = new PorManager(address(new MockFeed()), 8, 15 minutes, 500);
+    por.refresh(); // set initial price
   }
 
   function testRefresh() public {

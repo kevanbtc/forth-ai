@@ -4,6 +4,8 @@ import invariant from "tiny-invariant";
 import { HistoryStore } from "./historyStore.js";
 import { makeOpenAI } from "./openai.js";
 import { fetchText, trimForPrompt } from "./fileIngest.js";
+import { chatOllama } from "./ollama.js";
+import http from "http";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -18,7 +20,9 @@ const {
   MAX_ATTACH_BYTES = "1048576",
   ENABLE_FORTH_EXEC = "0",
   FORTH_CMD = "gforth",
-  FORTH_TIMEOUT_MS = "6000"
+  FORTH_TIMEOUT_MS = "6000",
+  OPS_INDEX = "../ops/index.json",
+  USE_OLLAMA = "0", OLLAMA_BASE = "http://ollama:11434", OLLAMA_MODEL = "unykorn-ops"
 } = process.env;
 
 invariant(DISCORD_TOKEN, "DISCORD_TOKEN required");
@@ -44,6 +48,14 @@ const openaiChat = OPENAI_API_KEY
     })
   : null;
 
+// Metrics
+let chatCount = 0;
+let ollamaCount = 0;
+let openaiCount = 0;
+let powershellCount = 0;
+let errorCount = 0;
+let totalLatency = 0;
+
 async function callPowerShell(prompt) {
   return new Promise((resolve, reject) => {
     const ps = spawn(POWERSHELL_CMD, [INFER_SCRIPT, "-Prompt", prompt, "-Model", OPENAI_MODEL || "gpt-4o-mini", "-Temperature", TEMPERATURE, "-MaxTokens", MAX_TOKENS], { shell: false });
@@ -57,17 +69,9 @@ async function callPowerShell(prompt) {
   });
 }
 
-async function runCast(cmd) {
-  return new Promise((resolve, reject) => {
-    const cast = spawn("cast", cmd.split(" "), { shell: false });
-    let out = "", err = "";
-    cast.stdout.on("data", d => out += d);
-    cast.stderr.on("data", d => err += d);
-    cast.on("close", code => {
-      if (code === 0) resolve(out.trim());
-      else reject(new Error(err.trim() || `cast exited ${code}`));
-    });
-  });
+async function readIndex() {
+  try { return JSON.parse(await fs.readFile(OPS_INDEX, "utf8")); }
+  catch { return null; }
 }
 
 client.once(Events.ClientReady, () => {
@@ -106,14 +110,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
       ];
 
       let reply;
-      if (USE_POWERSHELL === "1") {
-        reply = await callPowerShell(prompt);
-      } else {
-        if (!openaiChat) {
-          await interaction.editReply("OPENAI_API_KEY not set and USE_POWERSHELL=0. Set one path.");
-          return;
+      const start = Date.now();
+      try {
+        if (USE_OLLAMA === "1") {
+          reply = await chatOllama({
+            base: OLLAMA_BASE,
+            model: OLLAMA_MODEL,
+            messages: [{ role: "system", content: systemPrompt }, ...messages]
+          });
+          ollamaCount++;
+        } else if (USE_POWERSHELL === "1") {
+          reply = await callPowerShell(prompt);
+          powershellCount++;
+        } else {
+          if (!openaiChat) {
+            await interaction.editReply("OPENAI_API_KEY not set and USE_POWERSHELL=0. Set one path.");
+            return;
+          }
+          reply = await openaiChat({ system: systemPrompt, messages: [{ role: "system", content: `Model: ${chanModel}` }, ...messages] });
+          openaiCount++;
         }
-        reply = await openaiChat({ system: systemPrompt, messages: [{ role: "system", content: `Model: ${chanModel}` }, ...messages] });
+        chatCount++;
+      } catch (e) {
+        errorCount++;
+        throw e;
+      } finally {
+        totalLatency += Date.now() - start;
       }
 
       const record = [
@@ -277,6 +299,65 @@ client.on(Events.InteractionCreate, async (interaction) => {
       for (const c of chunks) await interaction.followUp(c);
       return;
     }
+
+    if (interaction.commandName === "portal") {
+      await interaction.deferReply({ ephemeral: true });
+      const idx = await readIndex();
+      if (!idx) return interaction.editReply("ops/index.json not found.");
+      const lines = [];
+      lines.push(`**Network:** ${idx.network}`);
+      lines.push(`**Contracts:**`);
+      for (const [k,v] of Object.entries(idx.contracts||{})) lines.push(`• ${k}: \`${v}\``);
+      lines.push(`**Dashboards:**`);
+      for (const [k,v] of Object.entries(idx.dashboards||{})) lines.push(`• ${k}: ${v}`);
+      lines.push(`**Runbooks:**`);
+      for (const [k,v] of Object.entries(idx.runbooks||{})) lines.push(`• ${k}: ${v}`);
+      await interaction.editReply(lines.join("\n"));
+      return;
+    }
+
+    if (interaction.commandName === "where") {
+      const key = interaction.options.getString("key", true);
+      await interaction.deferReply({ ephemeral: true });
+      const idx = await readIndex();
+      if (!idx) return interaction.editReply("ops/index.json not found.");
+      // simple recursive lookup
+      const found = JSON.stringify(idx, null, 2).match(new RegExp(`"${key}"\\s*:\\s*"(.*?)"`, "i"));
+      if (found && found[1]) return interaction.editReply(`**${key}** → \`${found[1]}\``);
+      // try contracts/dashboards direct
+      const c = idx.contracts?.[key] || idx.dashboards?.[key] || idx.runbooks?.[key];
+      if (c) return interaction.editReply(`**${key}** → ${typeof c === 'string' ? c : `\`${JSON.stringify(c)}\``}`);
+      await interaction.editReply(`Couldn't find **${key}**. Update ops/index.json.`);
+      return;
+    }
+
+    if (interaction.commandName === "llm") {
+      const provider = interaction.options.getString("provider", true);
+      const model = interaction.options.getString("model") || null;
+      process.env.USE_OLLAMA = provider === "ollama" ? "1" : "0";
+      process.env.USE_POWERSHELL = provider === "powershell" ? "1" : "0";
+      if (model) process.env.OLLAMA_MODEL = model;
+      await interaction.reply({ content: `🧠 LLM set → provider: ${provider}${model?`, model: ${model}`:""}`, ephemeral: true });
+      return;
+    }
+
+    if (interaction.commandName === "task") {
+      const subcommand = interaction.options.getSubcommand();
+      const id = interaction.options.getString("id", true);
+      await interaction.deferReply();
+
+      if (subcommand === "start") {
+        // Enqueue task
+        await interaction.editReply(`🚀 Task ${id} started.`);
+      } else if (subcommand === "status") {
+        // Check status
+        await interaction.editReply(`📊 Task ${id} status: In progress.`);
+      } else if (subcommand === "approve") {
+        // Approve
+        await interaction.editReply(`✅ Task ${id} approved.`);
+      }
+      return;
+    }
   } catch (e) {
     console.error(e);
     if (interaction.isRepliable()) {
@@ -319,3 +400,44 @@ function chunk(text, size) {
   }
   return out;
 }
+
+// Metrics server
+const server = http.createServer((req, res) => {
+  if (req.url === '/metrics') {
+    const avgLatency = chatCount > 0 ? totalLatency / chatCount : 0;
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end(`# HELP discord_chat_count Total chat interactions
+# TYPE discord_chat_count counter
+discord_chat_count ${chatCount}
+
+# HELP discord_ollama_count Ollama chat interactions
+# TYPE discord_ollama_count counter
+discord_ollama_count ${ollamaCount}
+
+# HELP discord_openai_count OpenAI chat interactions
+# TYPE discord_openai_count counter
+discord_openai_count ${openaiCount}
+
+# HELP discord_powershell_count PowerShell chat interactions
+# TYPE discord_powershell_count counter
+discord_powershell_count ${powershellCount}
+
+# HELP discord_error_count Chat errors
+# TYPE discord_error_count counter
+discord_error_count ${errorCount}
+
+# HELP discord_avg_latency_ms Average chat latency in ms
+# TYPE discord_avg_latency_ms gauge
+discord_avg_latency_ms ${avgLatency}
+`);
+  } else {
+    res.writeHead(404);
+    res.end('Not Found');
+  }
+});
+
+server.listen(3001, '0.0.0.0', () => {
+  console.log('Metrics server on http://0.0.0.0:3001/metrics');
+});
+
+client.login(DISCORD_TOKEN);

@@ -1,0 +1,115 @@
+{
+  "dashboard": {
+    "title": "Unykorn Ops Dashboard",
+    "tags": ["ops", "llm", "web3"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Chat Interactions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "discord_chat_count",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Average Latency",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "discord_avg_latency_ms",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 2000
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Provider Usage",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "discord_ollama_count",
+            "refId": "A",
+            "legendFormat": "Ollama"
+          },
+          {
+            "expr": "discord_openai_count",
+            "refId": "B",
+            "legendFormat": "OpenAI"
+          },
+          {
+            "expr": "discord_powershell_count",
+            "refId": "C",
+            "legendFormat": "PowerShell"
+          }
+        ]
+      },
+      {
+        "title": "Error Ratio (5m)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(discord_bot_requests_errors_total[5m]) / clamp_min(rate(discord_bot_requests_total[5m]),1)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 0.05
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  }
+}

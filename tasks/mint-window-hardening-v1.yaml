@@ -1,0 +1,12 @@
+id: "mint-window-hardening-v1"
+goal: "Harden PoR mint windows and add /status metrics panel"
+inputs:
+  repo: "."
+  network: "ethereum-mainnet"
+constraints:
+  - "No direct on-chain writes. Only Safe JSON."
+  - "Coverage >= 90%, Slither no HIGH/MED."
+deliverables:
+  - "PR: contracts + tests + CI changes"
+  - "Safe JSON: setCaps(uint256,uint256)"
+  - "Grafana dashboard JSON + docs"

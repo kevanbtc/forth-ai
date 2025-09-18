@@ -64,6 +64,36 @@ const commands = [
     .addStringOption(o =>
       o.setName("repo").setDescription("Repo (owner/repo)").setRequired(true)
     ),
+  new SlashCommandBuilder()
+    .setName("portal")
+    .setDescription("Show links, addresses, dashboards from ops/index.json"),
+  new SlashCommandBuilder()
+    .setName("where")
+    .setDescription("Find a thing from the ops index")
+    .addStringOption(o => o.setName("key").setDescription("e.g., StablecoinCore, Blockscout").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("llm")
+    .setDescription("Switch local/provider and model on the fly")
+    .addStringOption(o => o.setName("provider").setDescription("ollama|openai|powershell").setRequired(true))
+    .addStringOption(o => o.setName("model").setDescription("e.g., unykorn-ops, llama3.1:8b")),
+  new SlashCommandBuilder()
+    .setName("task")
+    .setDescription("Manage agent tasks")
+    .addSubcommand(sub =>
+      sub.setName("start")
+        .setDescription("Start a task by ID")
+        .addStringOption(o => o.setName("id").setDescription("Task ID").setRequired(true))
+    )
+    .addSubcommand(sub =>
+      sub.setName("status")
+        .setDescription("Check task status")
+        .addStringOption(o => o.setName("id").setDescription("Task ID").setRequired(true))
+    )
+    .addSubcommand(sub =>
+      sub.setName("approve")
+        .setDescription("Approve task bundle")
+        .addStringOption(o => o.setName("id").setDescription("Task ID").setRequired(true))
+    )
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);

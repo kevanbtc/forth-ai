@@ -1,0 +1,10 @@
+{
+  "files.exclude": {
+    "broadcast/**": true,
+    "cache/**": true,
+    "out/**": true
+  },
+  "terminal.integrated.scrollback": 10000,
+  "solidity.compileUsingRemoteVersion": "v0.8.24+commit.e11b9ed9",
+  "solidity.defaultCompiler": "remote"
+}

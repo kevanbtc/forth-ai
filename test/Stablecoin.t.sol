@@ -15,10 +15,12 @@ contract StablecoinTest is Test {
   function setUp() public {
     vm.warp(1_700_000_000);
     por = new PorManager(address(new MockFeed()), 8, 15 minutes, 500);
+    por.refresh(); // set initial price
     core = new StablecoinCore();
     core.initialize(admin, guardian, treasury, address(por), 1_000_000e18, 1_000_000e18);
-    vm.prank(admin);
+    vm.startPrank(admin);
     // grant roles if needed in tests…
+    vm.stopPrank();
   }
 
   function testCapsIncreaseOnMint() public {

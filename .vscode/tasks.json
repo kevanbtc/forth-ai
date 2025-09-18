@@ -16,6 +16,36 @@
 			"command": "gforth forth/tests/test.fth",
 			"group": "test",
 			"problemMatcher": []
+		},
+		{
+			"label": "Onebox: Up (Ollama+Core)",
+			"type": "shell",
+			"command": "cd ops/onebox && docker compose up -d ollama erigon lighthouse blockscout ipfs ipfs-cluster minio vault prometheus grafana loki discord-bot"
+		},
+		{
+			"label": "Ollama: Pull Llama3.1:8b",
+			"type": "shell",
+			"command": "docker exec -it ollama ollama pull llama3.1:8b"
+		},
+		{
+			"label": "Discord: Register Commands",
+			"type": "shell",
+			"command": "cd discord && npm run register"
+		},
+		{
+			"label": "Discord: Restart",
+			"type": "shell",
+			"command": "docker compose -f ops/onebox/docker-compose.yml restart discord-bot"
+		},
+		{
+			"label": "MkDocs: Serve",
+			"type": "shell",
+			"command": "mkdocs serve -a 0.0.0.0:8000"
+		},
+		{
+			"label": "Foundry: Test",
+			"type": "shell",
+			"command": "forge test -vvv"
 		}
 	]
 }

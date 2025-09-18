@@ -4,20 +4,22 @@ import "forge-std/Test.sol";
 import {VaultNFT} from "../contracts/VaultNFT.sol";
 import {VaultAccountFactory} from "../contracts/VaultAccountFactory.sol";
 import {ComplianceRegistry} from "../contracts/ComplianceRegistry.sol";
+import {MockERC6551Registry} from "./MockERC6551Registry.sol";
 
 contract VaultTest is Test {
   VaultNFT vault;
   VaultAccountFactory factory;
   ComplianceRegistry compliance;
+  MockERC6551Registry mockRegistry;
 
   address owner = address(0xA11CE);
-  address registry = address(0x123); // mock
   address impl = address(0x456);     // mock
 
   function setUp() public {
+    mockRegistry = new MockERC6551Registry();
     compliance = new ComplianceRegistry(owner);
-    factory = new VaultAccountFactory(registry, impl);
-    vault = new VaultNFT(registry, impl, owner);
+    factory = new VaultAccountFactory(address(mockRegistry), impl);
+    vault = new VaultNFT(address(mockRegistry), impl, owner);
   }
 
   function testMintVault() public {

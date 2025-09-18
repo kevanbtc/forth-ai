@@ -1,19 +1,43 @@
-# AI Inference Script (GPT-5 Placeholder using GPT-4o)
-# Usage: .\scripts\infer.ps1 "Your prompt here" [-Model "gpt-4o"] [-Temperature 0.7] [-MaxTokens 1000] [-HistoryFile "conversation.json"] [-LogFile "ai_log.txt"]
-# Requires: $env:OPENAI_API_KEY set (get from https://platform.openai.com/api-keys)
+# AI Inference Script (OpenAI or Ollama)
+# Usage: .\scripts\infer.ps1 "Your prompt here" [-Model "gpt-4o"] [-Provider "openai"] [-Temperature 0.7] [-MaxTokens 1000] [-HistoryFile "conversation.json"] [-LogFile "ai_log.txt"]
+# For Ollama: .\scripts\infer.ps1 "Your prompt here" -Provider ollama -Model "unykorn-ops" -OllamaBase "http://localhost:11434"
+# Requires: $env:OPENAI_API_KEY set for OpenAI (get from https://platform.openai.com/api-keys)
 
 param(
     [Parameter(Mandatory=$true)]
     [string]$Prompt,
-    [string]$Model = "gpt-4o",
+    [string]$Model = "unykorn-ops",
+    [ValidateSet("openai","ollama")][string]$Provider = "ollama",
+    [string]$OllamaBase = "http://localhost:11434",
     [double]$Temperature = 0.7,
     [int]$MaxTokens = 1000,
     [string]$HistoryFile = "conversation.json",
     [string]$LogFile = "ai_log.txt"
 )
 
-# Check for API key
-if (-not $env:OPENAI_API_KEY) {
+# Check for API key or Ollama
+if ($Provider -eq "ollama") {
+    # Ollama provider
+    $body = @{
+        model = $Model
+        messages = @(
+            @{ role = "system"; content = "You are concise and operational." },
+            @{ role = "user";   content = $Prompt }
+        )
+        stream = $false
+    } | ConvertTo-Json -Depth 6
+
+    try {
+        $response = Invoke-RestMethod -Method Post -Uri "$OllamaBase/api/chat" -ContentType "application/json" -Body $body
+        $assistantContent = $response.message.content
+        Write-Host "Ollama Response:" -ForegroundColor Green
+        Write-Host $assistantContent
+    } catch {
+        Write-Error "Ollama call failed: $($_.Exception.Message)"
+        exit 1
+    }
+    exit 0
+} elseif (-not $env:OPENAI_API_KEY) {
     Write-Error "OPENAI_API_KEY environment variable not set. Please set it first."
     exit 1
 }

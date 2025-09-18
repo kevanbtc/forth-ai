@@ -1,0 +1,13 @@
+site_name: Unykorn Ops Portal
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - search.suggest
+nav:
+  - Overview: index.md
+  - Contracts: contracts.md
+  - Runbooks: policy.md
+  - Addresses: addresses.md
+plugins:
+  - search

@@ -1,0 +1,25 @@
+groups:
+- name: llm-hive
+  rules:
+  - alert: LLMHighErrorRate
+    expr: rate(discord_bot_requests_errors_total[5m]) / clamp_min(rate(discord_bot_requests_total[5m]),1) > 0.05
+    for: 10m
+    labels: {severity: page}
+    annotations:
+      summary: "LLM error rate > 5% (5m)"
+      desc: "provider={{$labels.provider}} error_ratio={{$value}}"
+
+  - alert: LLMHighLatencyP95
+    expr: histogram_quantile(0.95, sum(rate(discord_bot_latency_seconds_bucket[5m])) by (le,provider)) > 2
+    for: 10m
+    labels: {severity: warn}
+    annotations:
+      summary: "LLM p95 latency > 2s (5m)"
+      desc: "provider={{$labels.provider}} p95>2s"
+
+  - alert: OllamaUnhealthy
+    expr: up{job="ollama"} == 0
+    for: 5m
+    labels: {severity: page}
+    annotations:
+      summary: "Ollama healthcheck failing"
