@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Forth Program",
+			"type": "shell",
+			"command": "& 'C:\\Program Files (x86)\\Gforth\\gforth.exe' src\\main.fth",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": ""
+		}
+	]
+}
