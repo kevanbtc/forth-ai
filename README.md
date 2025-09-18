@@ -69,3 +69,17 @@ When GPT-5 is released, update the `-Model` parameter to `"gpt-5"`.## Project St
 - `scripts/infer.ps1`: Advanced PowerShell script for AI inference with conversation history, model switching, and logging.
 - `conversation.json`: Stores conversation history (created automatically).
 - `ai_log.txt`: Logs all AI interactions (created automatically).
+- `discord/`: Discord bot integration for chatting with the AI in Discord servers.
+
+## Discord Bot Integration
+
+The repo includes a Discord bot that brings the AI brain to your Discord server. It supports slash commands for chatting, setting models, and resetting history.
+
+See `discord/README.md` for setup and deployment instructions.
+
+### Quick Setup
+
+1. Create a Discord application and bot.
+2. Set environment variables in `discord/.env`.
+3. Run `npm run register` to register commands.
+4. Deploy locally or to Railway/Render.
