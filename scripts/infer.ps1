@@ -1,10 +1,15 @@
 # AI Inference Script (GPT-5 Placeholder using GPT-4o)
-# Usage: .\scripts\infer.ps1 "Your prompt here"
+# Usage: .\scripts\infer.ps1 "Your prompt here" [-Model "gpt-4o"] [-Temperature 0.7] [-MaxTokens 1000] [-HistoryFile "conversation.json"] [-LogFile "ai_log.txt"]
 # Requires: $env:OPENAI_API_KEY set (get from https://platform.openai.com/api-keys)
 
 param(
     [Parameter(Mandatory=$true)]
-    [string]$Prompt
+    [string]$Prompt,
+    [string]$Model = "gpt-4o",
+    [double]$Temperature = 0.7,
+    [int]$MaxTokens = 1000,
+    [string]$HistoryFile = "conversation.json",
+    [string]$LogFile = "ai_log.txt"
 )
 
 # Check for API key
@@ -13,21 +18,32 @@ if (-not $env:OPENAI_API_KEY) {
     exit 1
 }
 
-# API endpoint and model (using GPT-4o as GPT-5 placeholder)
+# API endpoint
 $apiUrl = "https://api.openai.com/v1/chat/completions"
-$model = "gpt-4o"
+
+# Load conversation history
+$history = @()
+if (Test-Path $HistoryFile) {
+    try {
+        $history = Get-Content $HistoryFile | ConvertFrom-Json
+    } catch {
+        Write-Warning "Failed to load history file. Starting fresh."
+        $history = @()
+    }
+}
+
+# Add user message to history
+$history += @{
+    role = "user"
+    content = $Prompt
+}
 
 # Prepare request body
 $body = @{
-    model = $model
-    messages = @(
-        @{
-            role = "user"
-            content = $Prompt
-        }
-    )
-    max_tokens = 1000
-    temperature = 0.7
+    model = $Model
+    messages = $history
+    max_tokens = $MaxTokens
+    temperature = $Temperature
 } | ConvertTo-Json
 
 # Headers
@@ -40,9 +56,25 @@ try {
     # Make API call
     $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body
 
+    # Get assistant response
+    $assistantContent = $response.choices[0].message.content
+
+    # Add assistant message to history
+    $history += @{
+        role = "assistant"
+        content = $assistantContent
+    }
+
+    # Save updated history
+    $history | ConvertTo-Json | Set-Content $HistoryFile
+
+    # Log the interaction
+    $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - Model: $Model, Temp: $Temperature, Tokens: $MaxTokens`nPrompt: $Prompt`nResponse: $assistantContent`n---`n"
+    Add-Content $LogFile $logEntry
+
     # Output the response
     Write-Host "AI Response:" -ForegroundColor Green
-    Write-Host $response.choices[0].message.content
+    Write-Host $assistantContent
 } catch {
     Write-Error "API call failed: $($_.Exception.Message)"
     exit 1
