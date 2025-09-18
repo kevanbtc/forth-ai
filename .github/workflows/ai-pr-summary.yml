@@ -1,0 +1,55 @@
+name: AI PR Summary
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  summarize:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PowerShell
+        uses: PowerShell/PowerShell@v1
+        with:
+          pwsh-version: '7.4.x'
+
+      - name: Get diff
+        id: diff
+        run: |
+          echo "DIFF<<EOF" >> $GITHUB_OUTPUT
+          git --no-pager diff --unified=1 origin/${{ github.base_ref }}...HEAD | sed 's/`/\\`/g' >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run AI summary (infer.ps1)
+        id: ai
+        shell: pwsh
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          $prompt = @"
+Act as a senior reviewer. Summarize this PR diff in bullet points, highlight risk, breaking changes, and test coverage gaps. Suggest targeted tests. Keep it under 200 words.
+
+Diff:
+${{ steps.diff.outputs.DIFF }}
+"@
+          $out = ./infer.ps1 -Prompt $prompt -Model gpt-4o-mini -Temperature 0.2 -MaxTokens 400
+          $out | Out-File -FilePath ai_summary.txt -Encoding utf8
+          echo "SUMMARY<<EOF" >> $GITHUB_OUTPUT
+          cat ai_summary.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post PR comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          body=$(printf "### 🤖 AI Review Summary\n\n%s" "${{ steps.ai.outputs.SUMMARY }}")
+          gh pr comment ${{ github.event.pull_request.number }} --body "$body"

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gforth
+        run: sudo apt-get update && sudo apt-get install -y gforth
+
+      - name: Forth tests
+        run: gforth forth/tests/test.fth
+
+      - name: Setup PowerShell
+        uses: PowerShell/PowerShell@v1
+        with:
+          pwsh-version: '7.4.x'
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Force -Scope CurrentUser
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          Invoke-Pester -Path tests -CI

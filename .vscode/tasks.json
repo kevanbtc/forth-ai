@@ -8,7 +8,14 @@
 			"args": [],
 			"isBackground": false,
 			"problemMatcher": [],
-			"group": ""
+			"group": "none"
+		},
+		{
+			"label": "Forth: Run Tests",
+			"type": "shell",
+			"command": "gforth forth/tests/test.fth",
+			"group": "test",
+			"problemMatcher": []
 		}
 	]
 }
