@@ -31,6 +31,39 @@ const commands = [
     .addBooleanOption(o =>
       o.setName("run").setDescription("Execute with gforth (requires ENABLE_FORTH_EXEC=1)")
     ),
+  new SlashCommandBuilder()
+    .setName("status")
+    .setDescription("Get stablecoin status from chain (supply, caps, oracle)")
+    .addStringOption(o =>
+      o.setName("rpc").setDescription("RPC URL").setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("stablecoin").setDescription("StablecoinCore address").setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("por").setDescription("PorManager address").setRequired(true)
+    ),
+  new SlashCommandBuilder()
+    .setName("ops-caps")
+    .setDescription("Generate timelock TX data for cap updates")
+    .addStringOption(o =>
+      o.setName("mint").setDescription("New mint cap (e.g., 250000)").setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("burn").setDescription("New burn cap (e.g., 250000)").setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("timelock").setDescription("GuardianTimelock address").setRequired(true)
+    ),
+  new SlashCommandBuilder()
+    .setName("review-pr")
+    .setDescription("AI review of a GitHub PR diff")
+    .addStringOption(o =>
+      o.setName("pr").setDescription("PR number (e.g., 123)").setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("repo").setDescription("Repo (owner/repo)").setRequired(true)
+    ),
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);

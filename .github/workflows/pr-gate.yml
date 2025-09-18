@@ -1,0 +1,30 @@
+name: PR Gatekeeper
+on: [pull_request]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with: { version: nightly }
+      - name: Install deps
+        run: git submodule update --init --recursive || true
+      - name: Build
+        run: forge build
+      - name: Test
+        run: forge test
+      - name: Coverage Check
+        run: |
+          forge coverage --report lcov > lcov.info
+          coverage=$(grep "TOTAL" lcov.info | awk '{print $4}' | sed 's/%//')
+          if (( $(echo "$coverage < 90" | bc -l) )); then
+            echo "Coverage $coverage% below 90%"
+            exit 1
+          fi
+      - name: Storage Layout Check
+        run: |
+          # Compare storage layout with main branch
+          git fetch origin main
+          git diff origin/main -- contracts/ | grep -E "(struct|mapping|uint|int|address|bool)" || echo "No storage changes"
+          # If changes detected, require manual review

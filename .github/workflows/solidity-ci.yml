@@ -20,3 +20,10 @@ jobs:
           forge coverage --report lcov > lcov.info
           lines=$(grep -m1 "TOTAL" -n lcov.info || true)
           echo "Coverage collected (inspect lcov.info)"
+          # Extract line coverage percentage
+          coverage=$(grep "TOTAL" lcov.info | awk '{print $4}' | sed 's/%//')
+          if (( $(echo "$coverage < 90" | bc -l) )); then
+            echo "Coverage $coverage% is below 90% threshold"
+            exit 1
+          fi
+          echo "Coverage $coverage% meets threshold"

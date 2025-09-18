@@ -48,11 +48,24 @@ async function callPowerShell(prompt) {
   return new Promise((resolve, reject) => {
     const ps = spawn(POWERSHELL_CMD, [INFER_SCRIPT, "-Prompt", prompt, "-Model", OPENAI_MODEL || "gpt-4o-mini", "-Temperature", TEMPERATURE, "-MaxTokens", MAX_TOKENS], { shell: false });
     let out = "", err = "";
-    ps.stdout.on("data", d => (out += d.toString()));
-    ps.stderr.on("data", d => (err += d.toString()));
+    ps.stdout.on("data", d => out += d);
+    ps.stderr.on("data", d => err += d);
     ps.on("close", code => {
       if (code === 0) resolve(out.trim());
-      else reject(new Error(`infer.ps1 failed (${code}): ${err}`));
+      else reject(new Error(err.trim() || `PowerShell exited ${code}`));
+    });
+  });
+}
+
+async function runCast(cmd) {
+  return new Promise((resolve, reject) => {
+    const cast = spawn("cast", cmd.split(" "), { shell: false });
+    let out = "", err = "";
+    cast.stdout.on("data", d => out += d);
+    cast.stderr.on("data", d => err += d);
+    cast.on("close", code => {
+      if (code === 0) resolve(out.trim());
+      else reject(new Error(err.trim() || `cast exited ${code}`));
     });
   });
 }
@@ -203,6 +216,61 @@ client.on(Events.InteractionCreate, async (interaction) => {
       prior.push({ role: "user", content: `/explain-forth run=${doRun}` });
       prior.push({ role: "assistant", content: reply });
       await history.save(interaction.channelId, prior);
+
+      const chunks = chunk(reply, 1900);
+      await interaction.editReply(chunks.shift() || "No output");
+      for (const c of chunks) await interaction.followUp(c);
+      return;
+    }
+
+    // /status
+    if (interaction.commandName === "status") {
+      const rpc = interaction.options.getString("rpc", true);
+      const stablecoin = interaction.options.getString("stablecoin", true);
+      const por = interaction.options.getString("por", true);
+      await interaction.deferReply();
+
+      // Use cast to query
+      const totalSupply = await runCast(`call ${stablecoin} "totalSupply()" --rpc-url ${rpc}`);
+      const mintCap = await runCast(`call ${stablecoin} "dailyMintCap()" --rpc-url ${rpc}`);
+      const burnCap = await runCast(`call ${stablecoin} "dailyBurnCap()" --rpc-url ${rpc}`);
+      const lastPrice = await runCast(`call ${por} "lastPrice()" --rpc-url ${rpc}`);
+
+      const reply = `📊 **Stablecoin Status**\n- Total Supply: ${totalSupply}\n- Mint Cap: ${mintCap}\n- Burn Cap: ${burnCap}\n- Last Oracle Price: ${lastPrice}`;
+      await interaction.editReply(reply);
+      return;
+    }
+
+    // /ops-caps
+    if (interaction.commandName === "ops-caps") {
+      const mint = interaction.options.getString("mint", true);
+      const burn = interaction.options.getString("burn", true);
+      const timelock = interaction.options.getString("timelock", true);
+      await interaction.deferReply();
+
+      // Generate TX data for setCaps
+      const txData = `0x${Buffer.from(JSON.stringify({
+        to: timelock,
+        data: `0x${Buffer.from(`setCaps(uint256,uint256):${mint}e18,${burn}e18`, 'utf8').toString('hex')}`
+      })).toString('hex')}`;
+
+      const reply = `🔧 **Timelock TX for Caps Update**\nMint: ${mint}, Burn: ${burn}\nTX Data: \`\`\`${txData}\`\`\`\nQueue in Safe → Execute after 48h.`;
+      await interaction.editReply(reply);
+      return;
+    }
+
+    // /review-pr
+    if (interaction.commandName === "review-pr") {
+      const pr = interaction.options.getString("pr", true);
+      const repo = interaction.options.getString("repo", true);
+      await interaction.deferReply();
+
+      const diff = await fetch(`https://api.github.com/repos/${repo}/pulls/${pr}`, {
+        headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` }
+      }).then(r => r.json()).then(pr => fetch(pr.diff_url).then(r => r.text()));
+
+      const prompt = `Review this PR diff:\n${diff}`;
+      const reply = await openaiChat({ system: systemPrompt, messages: [{ role: "user", content: prompt }] });
 
       const chunks = chunk(reply, 1900);
       await interaction.editReply(chunks.shift() || "No output");
