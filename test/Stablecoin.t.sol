@@ -29,6 +29,65 @@ contract StablecoinTest is Test {
     vm.stopPrank();
     assertEq(core.balanceOf(address(this)), 100e18);
   }
+
+  function testBurn() public {
+    vm.startPrank(treasury);
+    core.mint(address(this), 100e18, bytes32("cid"));
+    core.burn(address(this), 50e18);
+    vm.stopPrank();
+    assertEq(core.balanceOf(address(this)), 50e18);
+  }
+
+  function testPause() public {
+    vm.startPrank(guardian);
+    core.pause();
+    vm.stopPrank();
+    assertTrue(core.paused());
+  }
+
+  function testUnpause() public {
+    vm.startPrank(guardian);
+    core.pause();
+    core.unpause();
+    vm.stopPrank();
+    assertFalse(core.paused());
+  }
+
+  function testSetCaps() public {
+    vm.startPrank(guardian);
+    core.setCaps(2000000e18, 2000000e18);
+    vm.stopPrank();
+    assertEq(core.dailyMintCap(), 2000000e18);
+    assertEq(core.dailyBurnCap(), 2000000e18);
+  }
+
+  function testTransfer() public {
+    vm.startPrank(treasury);
+    core.mint(treasury, 100e18, bytes32("cid"));
+    core.transfer(address(0x123), 50e18);
+    vm.stopPrank();
+    assertEq(core.balanceOf(treasury), 50e18);
+    assertEq(core.balanceOf(address(0x123)), 50e18);
+  }
+
+  function testApprove() public {
+    vm.startPrank(treasury);
+    core.mint(treasury, 100e18, bytes32("cid"));
+    core.approve(address(0x123), 50e18);
+    vm.stopPrank();
+    assertEq(core.allowance(treasury, address(0x123)), 50e18);
+  }
+
+  function testTransferFrom() public {
+    vm.startPrank(treasury);
+    core.mint(treasury, 100e18, bytes32("cid"));
+    core.approve(address(0x123), 50e18);
+    vm.stopPrank();
+    vm.prank(address(0x123));
+    core.transferFrom(treasury, address(0x456), 50e18);
+    assertEq(core.balanceOf(treasury), 50e18);
+    assertEq(core.balanceOf(address(0x456)), 50e18);
+  }
 }
 
 // super-minimal feed; replace with proper mock for real tests

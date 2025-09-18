@@ -16,3 +16,14 @@ remappings = [
 
 [fmt]
 line_length = 100
+
+[profile.ci]
+# keep runs modest for speed; deterministic seed
+fuzz_runs = 256
+invariant_runs = 256
+invariant_depth = 128
+invariant_fail_on_revert = false
+seed = "0xDEADBEEF"    # any fixed seed
+
+# Optional: exclude heavy test dirs from coverage
+coverage = true

@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
+import {StablecoinCore} from "../contracts/StablecoinCore.sol";
+import {PorManager} from "../contracts/PorManager.sol";
 import {VaultNFT} from "../contracts/VaultNFT.sol";
 import {ComplianceRegistry} from "../contracts/ComplianceRegistry.sol";
+
+import {StdInvariant} from "forge-std/StdInvariant.sol";
 
 contract Invariants is Test {
   StablecoinCore core;
@@ -69,6 +73,52 @@ contract Invariants is Test {
 
   function invariantTotalSupply() public {
     // Total supply never exceeds some reasonable bound, but for now placeholder
+  }
+
+  // Handlers for coverage
+  function handlerMint(uint256 amount) public {
+    amount = bound(amount, 1, 100e18); // bound to reasonable amount
+    vm.prank(address(this)); // treasury role
+    core.mint(address(0x123), amount, bytes32("test"));
+  }
+
+  function handlerBurn(uint256 amount) public {
+    uint256 balance = core.balanceOf(address(0x123));
+    if (balance > 0) {
+      amount = bound(amount, 1, balance);
+      vm.prank(address(this));
+      core.burn(address(0x123), amount);
+    }
+  }
+
+  function handlerPause() public {
+    vm.prank(address(this));
+    core.pause();
+  }
+
+  function handlerUnpause() public {
+    vm.prank(address(this));
+    core.unpause();
+  }
+
+  function handlerSetCaps(uint256 m, uint256 b) public {
+    m = bound(m, 1e18, 1e27);
+    b = bound(b, 1e18, 1e27);
+    vm.prank(address(this));
+    core.setCaps(m, b);
+  }
+
+  function handlerMintVault(uint256 val) public {
+    val = bound(val, 1e18, 1e27);
+    vm.prank(address(this));
+    vault.mintVault(address(this), bytes32("cid"), bytes32("hash"), val, address(this));
+  }
+
+  function handlerAddCompliance() public {
+    vm.prank(address(this));
+    compliance.approveSubmitter(address(this));
+    vm.prank(address(this));
+    compliance.addRecord(bytes32("tx"), bytes32("payload"), bytes32("cid"));
   }
 }
 
