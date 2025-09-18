@@ -4,6 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
+# Add gforth for /explain-forth run mode
+RUN apt-get update && apt-get install -y gforth && rm -rf /var/lib/apt/lists/*
+
 COPY src ./src
 COPY .env.example ./
 

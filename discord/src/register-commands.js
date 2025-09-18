@@ -13,6 +13,24 @@ const commands = [
   new SlashCommandBuilder()
     .setName("reset")
     .setDescription("Clear conversation history for this channel"),
+  new SlashCommandBuilder()
+    .setName("review-file")
+    .setDescription("AI review of an uploaded file (code/diff/text)")
+    .addAttachmentOption(o =>
+      o.setName("file").setDescription("Attach a text file (≤1MB)").setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("prompt").setDescription("Optional guidance to steer the review")
+    ),
+  new SlashCommandBuilder()
+    .setName("explain-forth")
+    .setDescription("Explain (and optionally run) a Forth snippet")
+    .addStringOption(o =>
+      o.setName("code").setDescription("Forth code to analyze").setRequired(true)
+    )
+    .addBooleanOption(o =>
+      o.setName("run").setDescription("Execute with gforth (requires ENABLE_FORTH_EXEC=1)")
+    ),
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
