@@ -2,9 +2,9 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
-import {StablecoinCore} from "../contracts/StablecoinCore.sol";
-import {PorManager} from "../contracts/PorManager.sol";
-import {GuardianTimelock} from "../contracts/GuardianTimelock.sol";
+import {VaultNFT} from "../contracts/VaultNFT.sol";
+import {VaultAccountFactory} from "../contracts/VaultAccountFactory.sol";
+import {ComplianceRegistry} from "../contracts/ComplianceRegistry.sol";
 
 contract Deploy is Script {
   function run() external {
@@ -15,6 +15,8 @@ contract Deploy is Script {
     address safeAdmin = vm.envAddress("SAFE_ADMIN");
     address safeGuardian = vm.envAddress("SAFE_GUARDIAN");
     address safeTreasury = vm.envAddress("SAFE_TREASURY");
+    address erc6551Registry = vm.envAddress("ERC6551_REGISTRY");
+    address accountImpl = vm.envAddress("ACCOUNT_IMPLEMENTATION");
 
     vm.startBroadcast();
 
@@ -36,10 +38,17 @@ contract Deploy is Script {
     core.grantRole(core.MINTER_ROLE(), safeTreasury);
     core.grantRole(core.BURNER_ROLE(), safeTreasury);
 
-    // Transfer admin to Timelock (via Safe later)
-    // For now, admin is deployer; post-deploy, use Safe to transfer to Timelock
+    address erc6551Registry = vm.envAddress("ERC6551_REGISTRY");
+    address accountImpl = vm.envAddress("ACCOUNT_IMPLEMENTATION");
 
-    vm.stopBroadcast();
+    // Deploy Compliance Registry
+    ComplianceRegistry compliance = new ComplianceRegistry(safeAdmin);
+
+    // Deploy Vault Factory
+    VaultAccountFactory vaultFactory = new VaultAccountFactory(erc6551Registry, accountImpl);
+
+    // Deploy Vault NFT
+    VaultNFT vaultNFT = new VaultNFT(erc6551Registry, accountImpl, safeAdmin);
 
     // Log addresses
     console.log("PorManager:", address(por));

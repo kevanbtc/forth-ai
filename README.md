@@ -144,11 +144,53 @@ forge script script/Deploy.s.sol --rpc-url <your-rpc> --broadcast --verify
 - **Runbooks**: See `ops/policy.md` for pause/resume, oracle issues, and upgrades.
 - **Monitoring**: Track caps, PoR status, and events via The Graph or custom dashboards.
 
-### Project Structure (Updated)
+## RWA Tokenization Infrastructure
 
-- `contracts/`: Solidity contracts (StablecoinCore.sol, PorManager.sol).
-- `script/`: Foundry deployment scripts (Deploy.s.sol, Config.s.sol).
-- `test/`: Unit and invariant tests (Stablecoin.t.sol, PorManager.t.sol, Invariants.t.sol).
-- `ops/`: Operational docs and address templates.
-- `foundry.toml`: Foundry configuration.
-- `.github/workflows/`: CI for Solidity (tests, coverage, Slither).
+This project now supports **Real-World Asset (RWA) tokenization** with compliant vaults, token-bound accounts, and proof-of-reserves.
+
+### Architecture
+
+- **VaultNFT.sol**: ERC-721 vaults for individual assets (one NFT = one asset lot).
+- **VaultAccountFactory.sol**: ERC-6551 token-bound accounts for programmable custody.
+- **ComplianceRegistry.sol**: Travel Rule compliance with payload hashes and IPFS CIDs.
+- **Proofs**: Every mint/burn references a `proofCID` (IPFS hash of docs: appraisals, receipts, PoR).
+
+### Minting RWAs
+
+1. **Pin Docs to IPFS/Pinata**: Encrypt sensitive docs, get CID + sha256 hash.
+2. **Mint Vault**: `vault.mintVault(to, assetCID, assetHash, valuation, custodian)`
+3. **Bind Account**: Automatic ERC-6551 account creation for payouts/transfers.
+4. **Fractionalize** (optional): Split into ERC-1155 shares for liquidity.
+5. **Compliance**: Attach Travel Rule payloads via `ComplianceRegistry.addRecord()`.
+
+### Deployment
+
+Set ERC-6551 registry and implementation addresses:
+
+```
+export ERC6551_REGISTRY=0x...  # Deployed registry
+export ACCOUNT_IMPLEMENTATION=0x...  # ERC-6551 account impl
+forge script script/Deploy.s.sol --rpc-url $RPC --broadcast
+```
+
+### Example Commands
+
+**Mint a vault for $100k asset:**
+
+```bash
+cast send <VaultNFT> "mintVault(address,bytes32,bytes32,uint256,address)" \
+  <to> 0x<cid> 0x<hash> 100000e18 <custodian> --rpc-url $RPC --private-key $PK
+```
+
+**Add compliance record:**
+
+```bash
+cast send <ComplianceRegistry> "addRecord(bytes32,bytes32,bytes32)" \
+  0x<txId> 0x<payloadHash> 0x<cid> --rpc-url $RPC --private-key $PK
+```
+
+### Compliance Notes
+
+- **Travel Rule**: Payload hash + CID for jurisdiction-tagged data.
+- **Custody**: Legal wrappers (SPVs) define rights and redemptions.
+- **Docs**: Pin encrypted docs to IPFS, record CID/hash on-chain.
