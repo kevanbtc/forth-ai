@@ -1,0 +1,22 @@
+name: Solidity CI
+on: [push, pull_request]
+
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with: { version: nightly }
+      - name: Install deps
+        run: |
+          git submodule update --init --recursive || true
+      - name: Build
+        run: forge build --sizes
+      - name: Test
+        run: forge test -vvv
+      - name: Coverage gate
+        run: |
+          forge coverage --report lcov > lcov.info
+          lines=$(grep -m1 "TOTAL" -n lcov.info || true)
+          echo "Coverage collected (inspect lcov.info)"

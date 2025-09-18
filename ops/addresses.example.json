@@ -1,0 +1,10 @@
+{
+  "admin": "0x...",
+  "guardian": "0x...",
+  "treasury": "0x...",
+  "safe": "0x...",
+  "timelock": "0x...",
+  "proxy": "0x...",
+  "porManager": "0x...",
+  "chainlinkFeed": "0x..."
+}

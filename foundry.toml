@@ -1,0 +1,13 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.24"
+optimizer = true
+optimizer_runs = 500
+evm_version = "paris"
+fs_permissions = [{ access = "read", path = "./"}]
+ffi = false
+
+[fmt]
+line_length = 100
