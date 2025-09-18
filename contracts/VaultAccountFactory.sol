@@ -13,10 +13,10 @@ contract VaultAccountFactory {
   }
 
   function createAccount(address tokenContract, uint256 tokenId) external returns (address) {
-    return registry.createAccount(implementation, block.chainid, tokenContract, tokenId, 0, "");
+    return registry.createAccount(implementation, 0, block.chainid, tokenContract, tokenId);
   }
 
   function getAccount(address tokenContract, uint256 tokenId) external view returns (address) {
-    return registry.account(implementation, block.chainid, tokenContract, tokenId, 0);
+    return registry.account(implementation, 0, block.chainid, tokenContract, tokenId);
   }
 }

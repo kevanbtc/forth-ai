@@ -2,6 +2,9 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
+import {StablecoinCore} from "../contracts/StablecoinCore.sol";
+import {PorManager} from "../contracts/PorManager.sol";
+import {GuardianTimelock} from "../contracts/GuardianTimelock.sol";
 import {VaultNFT} from "../contracts/VaultNFT.sol";
 import {VaultAccountFactory} from "../contracts/VaultAccountFactory.sol";
 import {ComplianceRegistry} from "../contracts/ComplianceRegistry.sol";
@@ -37,9 +40,6 @@ contract Deploy is Script {
     // Grant roles to Safes
     core.grantRole(core.MINTER_ROLE(), safeTreasury);
     core.grantRole(core.BURNER_ROLE(), safeTreasury);
-
-    address erc6551Registry = vm.envAddress("ERC6551_REGISTRY");
-    address accountImpl = vm.envAddress("ACCOUNT_IMPLEMENTATION");
 
     // Deploy Compliance Registry
     ComplianceRegistry compliance = new ComplianceRegistry(safeAdmin);

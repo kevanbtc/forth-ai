@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import {ERC20Permit} from "openzeppelin-contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {AccessControlDefaultAdminRules} from "openzeppelin-contracts/access/extensions/AccessControlDefaultAdminRules.sol";
-import {Pausable} from "openzeppelin-contracts/security/Pausable.sol";
+import {AccessControl} from "openzeppelin-contracts/access/AccessControl.sol";
+import {Pausable} from "openzeppelin-contracts/utils/Pausable.sol";
 import {UUPSUpgradeable} from "openzeppelin-contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import {EIP712} from "openzeppelin-contracts/utils/cryptography/EIP712.sol";
@@ -15,8 +15,8 @@ interface IPorManager {
 }
 
 contract StablecoinCore is
-  Initializable, ERC20, ERC20Permit, Pausable,
-  AccessControlDefaultAdminRules, UUPSUpgradeable
+  ERC20, ERC20Permit, Pausable,
+  AccessControl
 {
   bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
   bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
@@ -36,13 +36,19 @@ contract StablecoinCore is
   event PorManagerUpdated(address indexed por);
   event TravelRuleAttached(bytes32 indexed txId, bytes32 payloadHash, bytes32 cid);
 
-  constructor() ERC20("Unykorn USD", "uUSD") ERC20Permit("Unykorn USD") {}
+  constructor() ERC20("Unykorn USD", "uUSD") ERC20Permit("Unykorn USD") {
+    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    _grantRole(GUARDIAN_ROLE, msg.sender);
+    _grantRole(TREASURY_ROLE, msg.sender);
+    _grantRole(MINTER_ROLE, msg.sender);
+    _grantRole(BURNER_ROLE, msg.sender);
+  }
 
   function initialize(
     address admin, address guardian, address treasury, address porManager,
     uint256 _dailyMintCap, uint256 _dailyBurnCap
-  ) public initializer {
-    __AccessControlDefaultAdminRules_init(48 hours, admin);
+  ) public {
+    _grantRole(DEFAULT_ADMIN_ROLE, admin);
     _grantRole(GUARDIAN_ROLE, guardian);
     _grantRole(TREASURY_ROLE, treasury);
     _grantRole(MINTER_ROLE, treasury);
@@ -88,7 +94,7 @@ contract StablecoinCore is
     emit Minted(to, amount, proofCid);
   }
 
-  function burn(address indexed from, uint256 amount)
+  function burn(address from, uint256 amount)
     external whenNotPaused onlyRole(BURNER_ROLE)
   {
     _rollEpoch();
@@ -107,7 +113,7 @@ contract StablecoinCore is
   // --- Overrides ---
 
   function _authorizeUpgrade(address)
-    internal override onlyRole(getRoleAdmin(GUARDIAN_ROLE)) {}
+    internal onlyRole(DEFAULT_ADMIN_ROLE) {}
   function _beforeTokenTransfer(address from, address to, uint256 amount)
-    internal override whenNotPaused { super._beforeTokenTransfer(from, to, amount); }
+    internal whenNotPaused {}
 }

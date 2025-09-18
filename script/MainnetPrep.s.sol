@@ -13,10 +13,17 @@ contract MainnetPrep is Script {
     vm.createSelectFork(vm.rpcUrl("testnet"));
 
     address admin = vm.envAddress("SAFE_ADMIN");
-    // ... same as Deploy.s.sol
+    address guardian = vm.envAddress("SAFE_GUARDIAN");
+    address treasury = vm.envAddress("SAFE_TREASURY");
+    address feed = vm.envAddress("CL_FEED");
 
-    // Deploy
-    // ... 
+    vm.startBroadcast();
+
+    PorManager por = new PorManager(feed, 8, 15 minutes, 500);
+    StablecoinCore core = new StablecoinCore();
+    core.initialize(admin, guardian, treasury, address(por), 250_000e18, 250_000e18);
+
+    vm.stopBroadcast();
 
     // Post-deploy checks
     require(StablecoinCore(core).totalSupply() == 0, "Supply not zero");

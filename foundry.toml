@@ -8,6 +8,11 @@ optimizer_runs = 500
 evm_version = "paris"
 fs_permissions = [{ access = "read", path = "./"}]
 ffi = false
+remappings = [
+  "openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/",
+  "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+  "erc6551/=lib/reference/src/"
+]
 
 [fmt]
 line_length = 100

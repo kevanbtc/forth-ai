@@ -38,13 +38,13 @@ contract VaultNFT is ERC721, Ownable {
     vaults[tokenId] = VaultData(assetCID, assetHash, valuation, 0, custodian);
 
     // Create ERC-6551 account
-    registry.createAccount(accountImplementation, block.chainid, address(this), tokenId, 0, "");
+    registry.createAccount(accountImplementation, 0, block.chainid, address(this), tokenId);
 
     emit VaultMinted(tokenId, assetCID, assetHash, valuation);
   }
 
   function getVaultAccount(uint256 tokenId) external view returns (address) {
-    return registry.account(accountImplementation, block.chainid, address(this), tokenId, 0);
+    return registry.account(accountImplementation, 0, block.chainid, address(this), tokenId);
   }
 
   // Optional: fractionalize into ERC-1155 shares (stub)
