@@ -4,7 +4,7 @@ import invariant from "tiny-invariant";
 import { HistoryStore } from "./historyStore.js";
 import { makeOpenAI } from "./openai.js";
 import { fetchText, trimForPrompt } from "./fileIngest.js";
-import { chatOllama } from "./ollama.js";
+import { topK } from "./embeddings.js";
 import http from "http";
 import { spawn } from "node:child_process";
 import os from "node:os";
@@ -304,15 +304,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const idx = await readIndex();
       if (!idx) return interaction.editReply("ops/index.json not found.");
-      const lines = [];
-      lines.push(`**Network:** ${idx.network}`);
-      lines.push(`**Contracts:**`);
-      for (const [k,v] of Object.entries(idx.contracts||{})) lines.push(`• ${k}: \`${v}\``);
-      lines.push(`**Dashboards:**`);
-      for (const [k,v] of Object.entries(idx.dashboards||{})) lines.push(`• ${k}: ${v}`);
-      lines.push(`**Runbooks:**`);
-      for (const [k,v] of Object.entries(idx.runbooks||{})) lines.push(`• ${k}: ${v}`);
-      await interaction.editReply(lines.join("\n"));
+
+      let context = "";
+      if (USE_OLLAMA === "1") {
+        try {
+          const snippets = await topK(OLLAMA_BASE, "project overview", 3);
+          context = snippets.map(s => s.text).join("\n\n");
+        } catch (e) {
+          console.log("RAG failed, falling back to full index");
+          context = JSON.stringify(idx, null, 2);
+        }
+      } else {
+        context = JSON.stringify(idx, null, 2);
+      }
+
+      const prompt = [
+        "You are a helpful assistant for the Web3 stablecoin project.",
+        "Use the following context to provide a concise overview of the current network, contracts, dashboards, and runbooks.",
+        "Format as a clean list.",
+        "",
+        "Context:",
+        context
+      ].join("\n");
+
+      const reply = (USE_OLLAMA === "1")
+        ? await chatOllama({
+            base: OLLAMA_BASE,
+            model: OLLAMA_MODEL,
+            messages: [{ role: "user", content: prompt }]
+          })
+        : await openaiChat({ system: systemPrompt, messages: [{ role: "user", content: prompt }] });
+
+      await interaction.editReply(reply);
       return;
     }
 
@@ -321,13 +344,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const idx = await readIndex();
       if (!idx) return interaction.editReply("ops/index.json not found.");
-      // simple recursive lookup
-      const found = JSON.stringify(idx, null, 2).match(new RegExp(`"${key}"\\s*:\\s*"(.*?)"`, "i"));
-      if (found && found[1]) return interaction.editReply(`**${key}** → \`${found[1]}\``);
-      // try contracts/dashboards direct
-      const c = idx.contracts?.[key] || idx.dashboards?.[key] || idx.runbooks?.[key];
-      if (c) return interaction.editReply(`**${key}** → ${typeof c === 'string' ? c : `\`${JSON.stringify(c)}\``}`);
-      await interaction.editReply(`Couldn't find **${key}**. Update ops/index.json.`);
+
+      let context = "";
+      if (USE_OLLAMA === "1") {
+        try {
+          const snippets = await topK(OLLAMA_BASE, `find ${key}`, 3);
+          context = snippets.map(s => s.text).join("\n\n");
+        } catch (e) {
+          console.log("RAG failed, falling back to full index");
+          context = JSON.stringify(idx, null, 2);
+        }
+      } else {
+        context = JSON.stringify(idx, null, 2);
+      }
+
+      const prompt = [
+        "You are a helpful assistant for the Web3 stablecoin project.",
+        `Find the value for "${key}" in the following context.`,
+        "If it's a contract address, dashboard URL, or runbook link, provide it directly.",
+        "If not found, suggest updating ops/index.json.",
+        "",
+        "Context:",
+        context
+      ].join("\n");
+
+      const reply = (USE_OLLAMA === "1")
+        ? await chatOllama({
+            base: OLLAMA_BASE,
+            model: OLLAMA_MODEL,
+            messages: [{ role: "user", content: prompt }]
+          })
+        : await openaiChat({ system: systemPrompt, messages: [{ role: "user", content: prompt }] });
+
+      await interaction.editReply(reply);
       return;
     }
 
