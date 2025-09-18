@@ -83,3 +83,72 @@ See `discord/README.md` for setup and deployment instructions.
 2. Set environment variables in `discord/.env`.
 3. Run `npm run register` to register commands.
 4. Deploy locally or to Railway/Render.
+
+## Web3 Stablecoin Infrastructure
+
+This project now includes a production-ready stablecoin implementation on Ethereum-compatible chains, featuring Proof-of-Reserves (PoR), daily mint/burn caps, role-based access control, and upgradeability.
+
+### Architecture
+
+- **StablecoinCore.sol**: ERC20 stablecoin with UUPS upgrades, pausing, caps, and PoR integration.
+- **PorManager.sol**: Chainlink price feed integration for PoR validation with deviation checks.
+- **Roles**: Admin, Guardian, Treasury, Minter, Burner with timelock-protected upgrades.
+- **Security**: OpenZeppelin contracts, Slither static analysis, Foundry testing with invariants.
+
+### Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) for Solidity development and testing.
+- Node.js for deployment scripts (if needed).
+
+### Building and Testing
+
+Install dependencies and build:
+
+```
+forge install
+forge build
+```
+
+Run tests:
+
+```
+forge test -vvv
+```
+
+Run coverage:
+
+```
+forge coverage
+```
+
+### Deployment
+
+Set environment variables (see `ops/addresses.example.json`):
+
+```
+export ADMIN=0x...
+export GUARDIAN=0x...
+export TREASURY=0x...
+export CL_FEED=0x...  # Chainlink USD feed
+```
+
+Deploy:
+
+```
+forge script script/Deploy.s.sol --rpc-url <your-rpc> --broadcast --verify
+```
+
+### Operations
+
+- **CI/CD**: GitHub Actions run Forge tests and Slither on PRs.
+- **Runbooks**: See `ops/policy.md` for pause/resume, oracle issues, and upgrades.
+- **Monitoring**: Track caps, PoR status, and events via The Graph or custom dashboards.
+
+### Project Structure (Updated)
+
+- `contracts/`: Solidity contracts (StablecoinCore.sol, PorManager.sol).
+- `script/`: Foundry deployment scripts (Deploy.s.sol, Config.s.sol).
+- `test/`: Unit and invariant tests (Stablecoin.t.sol, PorManager.t.sol, Invariants.t.sol).
+- `ops/`: Operational docs and address templates.
+- `foundry.toml`: Foundry configuration.
+- `.github/workflows/`: CI for Solidity (tests, coverage, Slither).
