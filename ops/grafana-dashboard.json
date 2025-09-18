@@ -134,6 +134,36 @@
             "refId": "A"
           }
         ]
+      },
+      {
+        "title": "Payouts Distributed",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "vault_payouts_total",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Vaults Closed",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "vault_closed_total",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Vaults Burned",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "vault_burned_total",
+            "refId": "A"
+          }
+        ]
       }
     ],
     "time": {

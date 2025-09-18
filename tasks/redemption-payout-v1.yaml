@@ -1,0 +1,12 @@
+id: "redemption-payout-v1"
+goal: "Add payout distribution and redemption/burn flow for VaultNFT (Safe-only ops) with invariants and dashboards."
+inputs: { repo: "." }
+constraints:
+  - "No direct chain writes; emit Safe JSON only"
+  - "Coverage >= 90%"
+  - "Slither: no HIGH/MED"
+  - "Storage layout: no diffs"
+deliverables:
+  - "PR: /distribute-payout, /redeem-vault, /burn-vault commands"
+  - "PR: Foundry tests + invariants for payout/redeem/burn"
+  - "PR: Grafana panels for payouts & closure"

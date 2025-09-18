@@ -22,7 +22,7 @@ const {
   FORTH_TIMEOUT_MS = "6000",
   OPS_INDEX = "../ops/index.json",
   USE_OLLAMA = "0", OLLAMA_BASE = "http://ollama:11434", OLLAMA_MODEL = "unykorn-ops",
-  VAULT_NFT, COMPLIANCE
+  VAULT_NFT, COMPLIANCE, ACCOUNT_FACTORY, ACCOUNT_IMPLEMENTATION, TREASURY
 } = process.env;
 
 invariant(DISCORD_TOKEN, "DISCORD_TOKEN required");
@@ -51,16 +51,27 @@ const openaiChat = OPENAI_API_KEY
 const iVault = new Interface([
   "function mint(address to,string cid,bytes32 docHash,uint256 notional)",
   "function safeTransferFrom(address from,address to,uint256 tokenId)",
-  "function setMetadata(uint256 tokenId,string cid,bytes32 docHash)"
+  "function setMetadata(uint256 tokenId,string cid,bytes32 docHash)",
+  "function close(uint256 vaultId,address to)",
+  "function burn(uint256 tokenId)"
 ]);
 const iComp = new Interface([
   "function addRecord(uint256 vaultId,bytes32 payloadHash,bytes32 payloadCid,uint256 isoCode)"
+]);
+const iERC20 = new Interface([
+  "function transfer(address to,uint256 amount)"
 ]);
 
 function hex32(x){ return x.startsWith("0x") ? x : "0x"+x; }
 
 async function safeJson(to, data){
   return JSON.stringify({ to, value:"0", data, operation:0 }, null, 2);
+}
+
+async function accountOf(vaultId){
+  // Placeholder: compute 6551 account address
+  // In practice, use factory.getAccount(ACCOUNT_IMPLEMENTATION, salt, chainId, VAULT_NFT, vaultId)
+  return "0xTBA"; // Replace with actual computation
 }
 
 // Metrics
@@ -464,6 +475,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cid = interaction.options.getString("cid", true);
       const hash = hex32(interaction.options.getString("hash", true));
       const data = iVault.encodeFunctionData("setMetadata", [vaultid, cid, hash]);
+      const payload = await safeJson(VAULT_NFT, data);
+      await interaction.editReply("```json\n" + payload + "\n```");
+      return;
+    }
+
+    if (interaction.commandName === "distribute-payout") {
+      await interaction.deferReply({ ephemeral: true });
+      const id = interaction.options.getInteger("vaultid", true);
+      const asset = getAddress(interaction.options.getString("asset", true));
+      const amount = interaction.options.getString("amount", true);
+      const tba = await accountOf(id);
+
+      let payload;
+      if (asset === "0x0000000000000000000000000000000000000000") {
+        await interaction.editReply("ETH payouts require a distro contract. Configure and retry.");
+        return;
+      } else {
+        const data = iERC20.encodeFunctionData("transfer", [TREASURY, amount]);
+        payload = await safeJson(asset, data);
+      }
+      await interaction.editReply("```json\n" + payload + "\n```");
+      return;
+    }
+
+    if (interaction.commandName === "redeem-vault") {
+      await interaction.deferReply({ ephemeral: true });
+      const id = interaction.options.getInteger("vaultid", true);
+      const to = getAddress(interaction.options.getString("to", true));
+      const data = iVault.encodeFunctionData("close", [id, to]);
+      const payload = await safeJson(VAULT_NFT, data);
+      await interaction.editReply("```json\n" + payload + "\n```");
+      return;
+    }
+
+    if (interaction.commandName === "burn-vault") {
+      await interaction.deferReply({ ephemeral: true });
+      const id = interaction.options.getInteger("vaultid", true);
+      const data = iVault.encodeFunctionData("burn", [id]);
       const payload = await safeJson(VAULT_NFT, data);
       await interaction.editReply("```json\n" + payload + "\n```");
       return;

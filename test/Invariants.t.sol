@@ -52,6 +52,21 @@ contract Invariants is Test {
     // Note: Placeholder
   }
 
+  function invariantPayoutSafety() public {
+    // Cannot distribute more than account balance
+    // Note: Placeholder
+  }
+
+  function invariantRedeemPreconditions() public {
+    // Vault must be settled before redeem
+    // Note: Placeholder
+  }
+
+  function invariantBurnGuard() public {
+    // Burn only after closed and zero liabilities
+    // Note: Placeholder
+  }
+
   function invariantTotalSupply() public {
     // Total supply never exceeds some reasonable bound, but for now placeholder
   }

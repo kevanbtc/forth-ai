@@ -118,7 +118,22 @@ const commands = [
     .setDescription("Build Safe JSON to update vault docs")
     .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
     .addStringOption(o => o.setName("cid").setDescription("New IPFS CID").setRequired(true))
-    .addStringOption(o => o.setName("hash").setDescription("New sha256 hex").setRequired(true))
+    .addStringOption(o => o.setName("hash").setDescription("New sha256 hex").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("distribute-payout")
+    .setDescription("Safe JSON: distribute vault payout from 6551")
+    .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
+    .addStringOption(o => o.setName("asset").setDescription("Asset address").setRequired(true))
+    .addStringOption(o => o.setName("amount").setDescription("Amount in wei").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("redeem-vault")
+    .setDescription("Safe JSON: close a vault and release residuals")
+    .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
+    .addStringOption(o => o.setName("to").setDescription("Beneficiary address").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("burn-vault")
+    .setDescription("Safe JSON: burn a closed vault")
+    .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
