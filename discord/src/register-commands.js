@@ -107,7 +107,18 @@ const commands = [
     .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
     .addStringOption(o => o.setName("cid").setDescription("Travel-rule CID").setRequired(true))
     .addStringOption(o => o.setName("hash").setDescription("sha256 hex").setRequired(true))
-    .addIntegerOption(o => o.setName("iso").setDescription("ISO code (e.g., 840)").setRequired(true))
+    .addIntegerOption(o => o.setName("iso").setDescription("ISO code (e.g., 840)").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("transfer-vault")
+    .setDescription("Build Safe JSON for VaultNFT.safeTransferFrom")
+    .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
+    .addStringOption(o => o.setName("to").setDescription("Recipient addr").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("set-vault-metadata")
+    .setDescription("Build Safe JSON to update vault docs")
+    .addIntegerOption(o => o.setName("vaultid").setDescription("Vault tokenId").setRequired(true))
+    .addStringOption(o => o.setName("cid").setDescription("New IPFS CID").setRequired(true))
+    .addStringOption(o => o.setName("hash").setDescription("New sha256 hex").setRequired(true))
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);

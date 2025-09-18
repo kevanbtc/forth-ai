@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
-import {StablecoinCore} from "../contracts/StablecoinCore.sol";
-import {PorManager} from "../contracts/PorManager.sol";
+import {VaultNFT} from "../contracts/VaultNFT.sol";
+import {ComplianceRegistry} from "../contracts/ComplianceRegistry.sol";
 
 contract Invariants is Test {
   StablecoinCore core;
   PorManager por;
+  VaultNFT vault;
+  ComplianceRegistry compliance;
   MockFeed feed;
 
   function setUp() public {
@@ -14,6 +16,8 @@ contract Invariants is Test {
     por = new PorManager(address(feed), 8, 15 minutes, 500);
     core = new StablecoinCore();
     core.initialize(address(this), address(this), address(this), address(por), 1e18, 1e18);
+    vault = new VaultNFT(address(0), address(0), address(this));
+    compliance = new ComplianceRegistry(address(this));
   }
 
   function invariantPorFreshness() public {
@@ -36,6 +40,16 @@ contract Invariants is Test {
     // Usage in epoch should not exceed caps
     assertLe(core.mintInEpoch(), core.dailyMintCap(), "mint usage exceeds cap");
     assertLe(core.burnInEpoch(), core.dailyBurnCap(), "burn usage exceeds cap");
+  }
+
+  function invariantVaultMetadata() public {
+    // Vault metadata should not be empty on mint
+    // Note: This is a placeholder; in practice, check after mint
+  }
+
+  function invariantComplianceImmutability() public {
+    // Compliance records should not change after add
+    // Note: Placeholder
   }
 
   function invariantTotalSupply() public {

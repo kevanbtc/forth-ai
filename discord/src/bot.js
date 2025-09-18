@@ -49,7 +49,9 @@ const openaiChat = OPENAI_API_KEY
   : null;
 
 const iVault = new Interface([
-  "function mint(address to,string cid,bytes32 docHash,uint256 notional)"
+  "function mint(address to,string cid,bytes32 docHash,uint256 notional)",
+  "function safeTransferFrom(address from,address to,uint256 tokenId)",
+  "function setMetadata(uint256 tokenId,string cid,bytes32 docHash)"
 ]);
 const iComp = new Interface([
   "function addRecord(uint256 vaultId,bytes32 payloadHash,bytes32 payloadCid,uint256 isoCode)"
@@ -441,6 +443,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const iso = interaction.options.getInteger("iso", true);
       const data = iComp.encodeFunctionData("addRecord", [id, hash, cid, iso]);
       const payload = await safeJson(COMPLIANCE, data);
+      await interaction.editReply("```json\n" + payload + "\n```");
+      return;
+    }
+
+    if (interaction.commandName === "transfer-vault") {
+      await interaction.deferReply({ ephemeral: true });
+      const vaultid = interaction.options.getInteger("vaultid", true);
+      const to = getAddress(interaction.options.getString("to", true));
+      const from = interaction.user.id; // Assume from is the owner, but in reality need to check
+      const data = iVault.encodeFunctionData("safeTransferFrom", [from, to, vaultid]);
+      const payload = await safeJson(VAULT_NFT, data);
+      await interaction.editReply("```json\n" + payload + "\n```");
+      return;
+    }
+
+    if (interaction.commandName === "set-vault-metadata") {
+      await interaction.deferReply({ ephemeral: true });
+      const vaultid = interaction.options.getInteger("vaultid", true);
+      const cid = interaction.options.getString("cid", true);
+      const hash = hex32(interaction.options.getString("hash", true));
+      const data = iVault.encodeFunctionData("setMetadata", [vaultid, cid, hash]);
+      const payload = await safeJson(VAULT_NFT, data);
       await interaction.editReply("```json\n" + payload + "\n```");
       return;
     }

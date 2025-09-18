@@ -104,6 +104,36 @@
             }
           }
         }
+      },
+      {
+        "title": "Vault Count",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "vault_count",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Total Vault Notional",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "vault_total_notional",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Last Compliance Age",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "compliance_last_age_seconds",
+            "refId": "A"
+          }
+        ]
       }
     ],
     "time": {

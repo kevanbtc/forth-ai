@@ -1,0 +1,13 @@
+id: "vault-lifecycle-v1"
+goal: "Complete RWA vault lifecycle and telemetry"
+inputs:
+  repo: "."
+deliverables:
+  - "PR: /transfer-vault, /set-vault-metadata commands (Safe JSON only)"
+  - "PR: foundry tests for VaultNFT + Compliance invariants"
+  - "PR: grafana panel json for vault count/notional, last compliance age"
+constraints:
+  - "No direct chain writes; Safe JSON only"
+  - "Slither: no HIGH/MED"
+  - "Coverage >= 90%"
+  - "Storage layout: no diffs"
